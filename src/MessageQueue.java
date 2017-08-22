@@ -15,11 +15,12 @@ public class MessageQueue {
     // 消息集合
     Message[] messages;
 
-    int putIndex;
-
-    int getIndex;
-
-    int count;
+    // 消息进队列下标
+    int putIndex = 0;
+    // 队列取消息下标
+    int getIndex = 0;
+    // 消息记录数，用于判断是否继续生产消息和消费消息
+    int count = 0;
 
     public MessageQueue(Message[] messages) {
         lock = new ReentrantLock();
@@ -28,16 +29,37 @@ public class MessageQueue {
         mFullQueue = lock.newCondition();
     }
 
-    final void enqueueMessage(Message message){
-        lock.lock();
-        // 如果消息队列满了，那么让当前线程进入await等待队列，并释放当前锁，当其他线程调用singal()会重新请求锁，与Object.wait类似。
-        while (count == messages.length){
-            try {
-                mFullQueue.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+
+    /**
+     * 生产消息（消息进队列）
+     *
+     * @param message
+     */
+    final void enqueueMessage(Message message) {
+
+        try {
+            lock.lock();
+            // 如果消息队列满了，那么让当前线程进入await等待队列，并释放当前锁，当其他线程调用singal()会重新请求锁，与Object.wait类似。
+            while (count == messages.length) {
+                try {
+                    mFullQueue.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+            messages[putIndex] = message;
+            if (messages.length == 0) {
+                putIndex = 0;
+            } else {
+                putIndex++;
+                count++;
+            }
+            mEmptyQueue.signalAll();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
         }
-        messages[putIndex] = message;
     }
+
 }
