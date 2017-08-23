@@ -1,5 +1,3 @@
-import sun.plugin2.message.Message;
-
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,8 +20,9 @@ public class MessageQueue {
     // 消息记录数，用于判断是否继续生产消息和消费消息
     int count = 0;
 
-    public MessageQueue(Message[] messages) {
+    public MessageQueue() {
         lock = new ReentrantLock();
+        messages=new Message[50];
         // ReentrantLock.newCondition() 返回的是Condition的一个实现，该类在AbstractQueuedSynchronizer中被实现，叫做newCondition（）
         mEmptyQueue = lock.newCondition();
         mFullQueue = lock.newCondition();
@@ -60,6 +59,41 @@ public class MessageQueue {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * 消费消息
+     *
+     * @return
+     */
+    final Message consumeMessage() {
+        Message message = null;
+        try {
+            lock.lock();
+            while (count == 0) {
+                try {
+                    mEmptyQueue.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                // 遍历取消息，每取一个将之置为null
+                message = messages[getIndex];
+                messages[getIndex] = null;
+                if (messages.length == 0) {
+                    getIndex = 0;
+                } else {
+                    getIndex++;
+                    count--;
+                }
+                mFullQueue.signalAll();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
+
+        return message;
     }
 
 }
