@@ -14,7 +14,7 @@ public class Looper {
     /**
      * 获取Looper的线程副本
      *
-     * @return
+     * @return 返回Looper线程副本
      */
     public static Looper getLocalLooper() {
         // 返回此线程局部变量的当前线程副本中的值，如果这是线程第一次调用该方法，则创建并初始化此副本。
@@ -36,12 +36,13 @@ public class Looper {
 
         MessageQueue messageQueue = looper.messageQueue;
         // 无限循环
-        for (;;){
+        for (; ; ) {
             Message message = messageQueue.consumeMessage();
-            if (message == null){
+            if (message == null || message.handler == null) {
                 continue;
             }
 
+            message.handler.dispatchMessage(message);
         }
     }
 
